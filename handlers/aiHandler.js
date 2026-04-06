@@ -8,13 +8,12 @@ const openai = new OpenAI({
 // In production you'd store this in a database
 const conversationHistory = {};
 
-async function getAIResponse(userId, userMessage) {
-    // Initialize history for new users
-    if (!conversationHistory[userId]) {
-        conversationHistory[userId] = [
-            {
-                role: "system",
-                content: `You are a helpful business assistant on WhatsApp.
+// Max number of messages (user + assistant) to keep per user, excluding the system prompt
+const MAX_HISTORY_LENGTH = 20;
+
+const SYSTEM_PROMPT = {
+    role: "system",
+    content: `You are a helpful business assistant on WhatsApp.
                 
 Your goals:
 1. Answer customer questions clearly and helpfully
@@ -28,8 +27,12 @@ When capturing a lead always ask:
 - What service they are interested in
 
 Keep responses under 3 sentences unless explaining something complex.`
-            }
-        ];
+};
+
+async function getAIResponse(userId, userMessage) {
+    // Initialize history for new users
+    if (!conversationHistory[userId]) {
+        conversationHistory[userId] = [SYSTEM_PROMPT];
     }
 
     // Add user message to history
@@ -37,6 +40,14 @@ Keep responses under 3 sentences unless explaining something complex.`
         role: "user",
         content: userMessage
     });
+
+    // Prune history to prevent unbounded growth (keep system prompt + last N messages)
+    if (conversationHistory[userId].length > MAX_HISTORY_LENGTH + 1) {
+        conversationHistory[userId] = [
+            SYSTEM_PROMPT,
+            ...conversationHistory[userId].slice(-(MAX_HISTORY_LENGTH))
+        ];
+    }
 
     // Get response from GPT-4o
     const response = await openai.chat.completions.create({
