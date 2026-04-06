@@ -3,6 +3,8 @@ const dotenv  = require("dotenv");
 
 dotenv.config();
 
+const { handleMessage } = require("./handlers/messageHandler");
+
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
@@ -52,8 +54,7 @@ app.post("/webhook", async (req, res) => {
 
         console.log(`📩 Message from ${from}: ${text}`);
 
-        // Send to OpenAI and reply (we build this next)
-        const { handleMessage } = require("./handlers/messageHandler");
+        // Send to OpenAI and reply
         await handleMessage(from, text);
 
     } catch (err) {
