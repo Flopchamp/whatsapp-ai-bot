@@ -50,14 +50,28 @@ async function handleMessage(from, text) {
 
     console.log(`🤖 Processing message from ${from}...`);
 
-    // Step 1: Get AI response
-    const reply = await getAIResponse(from, sanitized);
+    try {
+        // Step 1: Get AI response
+        const reply = await getAIResponse(from, sanitized);
 
-    // Step 2: Send reply back to WhatsApp
-    await sendWhatsAppMessage(from, reply);
+        // Step 2: Send reply back to WhatsApp
+        await sendWhatsAppMessage(from, reply);
 
-    // Step 3: Save lead to database
-    await saveLead(from, sanitized, reply);
+        // Step 3: Save lead to database
+        await saveLead(from, sanitized, reply);
+    } catch (err) {
+        console.error(`❌ Error handling message from ${from}:`, err.message);
+
+        // Send a friendly fallback so the user isn't left hanging
+        try {
+            await sendWhatsAppMessage(
+                from,
+                "Sorry, I'm having trouble right now. Please try again in a moment."
+            );
+        } catch (sendErr) {
+            console.error("❌ Failed to send fallback message:", sendErr.message);
+        }
+    }
 }
 
 module.exports = { handleMessage };
