@@ -1,12 +1,35 @@
 const OpenAI = require("openai");
+const fs     = require("fs");
+const path   = require("path");
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
 });
 
-// Store conversation history per user
-// In production you'd store this in a database
-const conversationHistory = {};
+// Persist conversation history to disk so it survives restarts
+const HISTORY_FILE = path.join(__dirname, "../conversation_history.json");
+
+function loadHistory() {
+    try {
+        if (fs.existsSync(HISTORY_FILE)) {
+            return JSON.parse(fs.readFileSync(HISTORY_FILE, "utf8"));
+        }
+    } catch (err) {
+        console.error("⚠️ Failed to load conversation history:", err.message);
+    }
+    return {};
+}
+
+function saveHistory() {
+    try {
+        fs.writeFileSync(HISTORY_FILE, JSON.stringify(conversationHistory, null, 2));
+    } catch (err) {
+        console.error("⚠️ Failed to save conversation history:", err.message);
+    }
+}
+
+// Load existing history from disk on startup
+const conversationHistory = loadHistory();
 
 // Max number of messages (user + assistant) to keep per user, excluding the system prompt
 const MAX_HISTORY_LENGTH = 20;
@@ -63,6 +86,9 @@ async function getAIResponse(userId, userMessage) {
         role: "assistant",
         content: reply
     });
+
+    // Persist to disk so history survives server restarts
+    saveHistory();
 
     console.log(`🤖 AI reply: ${reply}`);
     return reply;
