@@ -100,7 +100,27 @@ app.post("/webhook", verifySignature, async (req, res) => {
 });
 
 // ── Start server ──────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📡 Webhook URL: http://localhost:${PORT}/webhook`);
 });
+
+// ── Graceful shutdown ─────────────────────────────────────────────────────────
+// Flush pending writes and close the HTTP server before exiting
+function gracefulShutdown(signal) {
+    console.log(`\n🛑 ${signal} received — shutting down gracefully…`);
+
+    server.close(() => {
+        console.log("✅ HTTP server closed");
+        process.exit(0);
+    });
+
+    // Force exit if server hasn't closed in 10 seconds
+    setTimeout(() => {
+        console.error("⚠️ Forced shutdown after timeout");
+        process.exit(1);
+    }, 10_000);
+}
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT",  () => gracefulShutdown("SIGINT"));
