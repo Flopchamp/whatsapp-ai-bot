@@ -29,8 +29,24 @@ function isRateLimited(phone) {
     return false;
 }
 
-async function handleMessage(from, text) {
-    if (!text) return; // Ignore non-text messages for now
+// Message types we can't process yet
+const UNSUPPORTED_TYPES = new Set([
+    "image", "audio", "video", "sticker",
+    "document", "location", "contacts"
+]);
+
+async function handleMessage(from, text, type = "text") {
+    // Let the user know if they sent something we can't handle yet
+    if (UNSUPPORTED_TYPES.has(type)) {
+        console.log(`📎 Unsupported message type '${type}' from ${from}`);
+        await sendWhatsAppMessage(
+            from,
+            `I can only read text messages for now. Could you type out your question instead? 😊`
+        );
+        return;
+    }
+
+    if (!text) return; // Safety fallback for unknown types
 
     // Check rate limit before processing
     if (isRateLimited(from)) {

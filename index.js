@@ -83,13 +83,14 @@ app.post("/webhook", verifySignature, async (req, res) => {
             return res.sendStatus(200); // No message, ignore
         }
 
-        const from = message.from;        // Sender's phone number
-        const text = message.text?.body;  // Message text
+        const from = message.from;           // Sender's phone number
+        const type = message.type;            // Message type (text, image, audio, etc.)
+        const text = message.text?.body;      // Message text (only for text messages)
 
-        console.log(`📩 Message from ${from}: ${text}`);
+        console.log(`📩 Message from ${from} [${type}]: ${text || '(non-text)'}`);
 
         // Send to OpenAI and reply
-        await handleMessage(from, text);
+        await handleMessage(from, text, type);
 
     } catch (err) {
         console.error("Error processing message:", err);
