@@ -22,7 +22,9 @@ async function sendWhatsAppMessage(to, message) {
         });
         console.log(`✅ Message sent to ${to}`);
     } catch (err) {
-        console.error("❌ Failed to send message:", err.response?.data || err.message);
+        const detail = err.response?.data?.error?.message || err.response?.data || err.message;
+        console.error(`❌ Failed to send message to ${to}:`, detail);
+        throw new Error(`WhatsApp API error: ${detail}`);
     }
 }
 

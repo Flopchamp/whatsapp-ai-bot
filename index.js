@@ -4,6 +4,15 @@ const dotenv  = require("dotenv");
 
 dotenv.config();
 
+// ── Validate required environment variables ───────────────────────────────────
+const REQUIRED_ENV = ["OPENAI_API_KEY", "WHATSAPP_PHONE_ID", "WHATSAPP_TOKEN", "VERIFY_TOKEN"];
+const missing = REQUIRED_ENV.filter(key => !process.env[key]);
+if (missing.length > 0) {
+    console.error(`❌ Missing required environment variables: ${missing.join(", ")}`);
+    console.error("   Copy .env.example to .env and fill in your keys.");
+    process.exit(1);
+}
+
 const { handleMessage } = require("./handlers/messageHandler");
 
 const app  = express();
@@ -93,7 +102,8 @@ app.post("/webhook", verifySignature, async (req, res) => {
         await handleMessage(from, text, type);
 
     } catch (err) {
-        console.error("Error processing message:", err);
+        console.error("❌ Error processing message:", err.message);
+        console.error("   Stack:", err.stack);
     }
 
     res.sendStatus(200); // Always respond 200 to WhatsApp
