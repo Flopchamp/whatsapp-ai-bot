@@ -1,7 +1,10 @@
 const axios = require("axios");
 
+// WhatsApp Cloud API version — override via WHATSAPP_API_VERSION env var
+const API_VERSION = process.env.WHATSAPP_API_VERSION || "v21.0";
+
 async function sendWhatsAppMessage(to, message) {
-    const url = `https://graph.facebook.com/v21.0/${process.env.WHATSAPP_PHONE_ID}/messages`;
+    const url = `https://graph.facebook.com/${API_VERSION}/${process.env.WHATSAPP_PHONE_ID}/messages`;
 
     const data = {
         messaging_product: "whatsapp",
