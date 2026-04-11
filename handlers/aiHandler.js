@@ -1,5 +1,5 @@
 const OpenAI = require("openai");
-const fs     = require("fs");
+const fs     = require("fs").promises;
 const path   = require("path");
 
 const openai = new OpenAI({
@@ -9,27 +9,42 @@ const openai = new OpenAI({
 // Persist conversation history to disk so it survives restarts
 const HISTORY_FILE = path.join(__dirname, "../conversation_history.json");
 
-function loadHistory() {
+// Simple lock to prevent concurrent file writes from corrupting data
+let writeLock = Promise.resolve();
+
+async function loadHistory() {
     try {
-        if (fs.existsSync(HISTORY_FILE)) {
-            return JSON.parse(fs.readFileSync(HISTORY_FILE, "utf8"));
-        }
+        const data = await fs.readFile(HISTORY_FILE, "utf8");
+        return JSON.parse(data);
     } catch (err) {
+        if (err.code === "ENOENT") return {}; // File doesn't exist yet
         console.error("⚠️ Failed to load conversation history:", err.message);
+        return {};
     }
-    return {};
 }
 
-function saveHistory() {
-    try {
-        fs.writeFileSync(HISTORY_FILE, JSON.stringify(conversationHistory, null, 2));
-    } catch (err) {
+async function saveHistory() {
+    writeLock = writeLock.then(async () => {
+        try {
+            await fs.writeFile(HISTORY_FILE, JSON.stringify(conversationHistory, null, 2));
+        } catch (err) {
+            console.error("⚠️ Failed to save conversation history:", err.message);
+        }
+    }).catch(err => {
         console.error("⚠️ Failed to save conversation history:", err.message);
-    }
+    });
+    return writeLock;
 }
 
-// Load existing history from disk on startup
-const conversationHistory = loadHistory();
+// Load existing history from disk on startup (filled in init())
+let conversationHistory = {};
+
+async function init() {
+    conversationHistory = await loadHistory();
+}
+
+// Run initialization immediately
+const initPromise = init();
 
 // Max number of messages (user + assistant) to keep per user, excluding the system prompt
 const MAX_HISTORY_LENGTH = 20;
@@ -53,6 +68,9 @@ Keep responses under 3 sentences unless explaining something complex.`
 };
 
 async function getAIResponse(userId, userMessage) {
+    // Ensure history is loaded from disk before first use
+    await initPromise;
+
     // Initialize history for new users
     if (!conversationHistory[userId]) {
         conversationHistory[userId] = [SYSTEM_PROMPT];
@@ -88,7 +106,7 @@ async function getAIResponse(userId, userMessage) {
     });
 
     // Persist to disk so history survives server restarts
-    saveHistory();
+    await saveHistory();
 
     console.log(`🤖 AI reply: ${reply}`);
     return reply;
